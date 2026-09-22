@@ -119,7 +119,7 @@ enum yysymbol_kind_t
   YYSYMBOL_RELOP = 11,                     /* RELOP  */
   YYSYMBOL_ASSIGN = 12,                    /* ASSIGN  */
   YYSYMBOL_PLUS = 13,                      /* PLUS  */
-  YYSYMBOL_TIMES = 14,                     /* TIMES  */
+  YYSYMBOL_MUL = 14,                       /* MUL  */
   YYSYMBOL_LBRACE = 15,                    /* LBRACE  */
   YYSYMBOL_RBRACE = 16,                    /* RBRACE  */
   YYSYMBOL_LPAREN = 17,                    /* LPAREN  */
@@ -544,7 +544,7 @@ static const char *const yytname[] =
 {
   "\"end of file\"", "error", "\"invalid token\"", "BCSMAIN", "IF",
   "ELSE", "WHILE", "INT", "BOOL", "ID", "NUM", "RELOP", "ASSIGN", "PLUS",
-  "TIMES", "LBRACE", "RBRACE", "LPAREN", "RPAREN", "SEMI", "UNKNOWN",
+  "MUL", "LBRACE", "RBRACE", "LPAREN", "RPAREN", "SEMI", "UNKNOWN",
   "$accept", "program", "declist", "decl", "type", "stmtlist", "stmt",
   "expr", "aexpr", "term", "factor", YY_NULLPTR
 };

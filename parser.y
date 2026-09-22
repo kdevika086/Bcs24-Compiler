@@ -14,7 +14,7 @@ extern FILE *yyin;
 %token INT BOOL
 %token ID NUM
 %token RELOP
-%token ASSIGN PLUS TIMES
+%token ASSIGN PLUS MUL
 %token LBRACE RBRACE LPAREN RPAREN SEMI
 %token UNKNOWN
 
@@ -60,7 +60,7 @@ aexpr
     ;
 
 term
-    : term TIMES factor
+    : term MUL factor
     | factor
     ;
 

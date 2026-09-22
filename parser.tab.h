@@ -65,7 +65,7 @@ extern int yydebug;
     RELOP = 266,                   /* RELOP  */
     ASSIGN = 267,                  /* ASSIGN  */
     PLUS = 268,                    /* PLUS  */
-    TIMES = 269,                   /* TIMES  */
+    MUL = 269,                     /* MUL  */
     LBRACE = 270,                  /* LBRACE  */
     RBRACE = 271,                  /* RBRACE  */
     LPAREN = 272,                  /* LPAREN  */
