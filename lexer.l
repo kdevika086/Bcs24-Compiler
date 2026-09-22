@@ -14,22 +14,22 @@ WS          [ \t\r]+
 %%
 
 "BcsMain"                       { return BCSMAIN; }
+"int"                           { return INT; }
+"bool"                          { return BOOL; }
 "if"                            { return IF; }
 "else"                          { return ELSE; }
 "while"                         { return WHILE; }
-"int"                           { return INT; }
-"bool"                          { return BOOL; }
 
-"<="|">="|"=="|"!="|"<"|">"    { return RELOP; }
+"<"|">"|"<="|">="|"=="|"!="    { return RELOP; }
 
-"="                             { return ASSIGN; }
 "+"                             { return PLUS; }
-"*"                             { return TIMES; }
+"*"                             { return MUL; }
+"="                             { return ASSIGN; }
 
-"{"                             { return LBRACE; }
-"}"                             { return RBRACE; }
-"("                             { return LPAREN; }
 ")"                             { return RPAREN; }
+"("                             { return LPAREN; }
+"}"                             { return RBRACE; }
+"{"                             { return LBRACE; }
 ";"                             { return SEMI; }
 
 {NUM}                           { return NUM; }
