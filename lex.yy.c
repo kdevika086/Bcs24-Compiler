@@ -363,11 +363,11 @@ struct yy_trans_info
 	};
 static const flex_int16_t yy_accept[49] =
     {   0,
-        0,    0,   22,   20,   19,   18,   20,   13,   14,   10,
-        9,   16,   15,    7,    8,    7,   17,   17,   17,   17,
-       17,   17,   11,   12,   19,    7,   16,   17,   17,   17,
-       17,    2,   17,   17,   17,   17,   17,    5,   17,   17,
-        6,    3,   17,   17,    4,   17,    1,    0
+        0,    0,   22,   20,   19,   18,   20,   12,   11,    9,
+        8,   16,   15,    7,   10,    7,   17,   17,   17,   17,
+       17,   17,   14,   13,   19,    7,   16,   17,   17,   17,
+       17,    4,   17,   17,   17,   17,   17,    2,   17,   17,
+        3,    5,   17,   17,    6,   17,    1,    0
     } ;
 
 static const YY_CHAR yy_ec[256] =
@@ -764,27 +764,27 @@ YY_RULE_SETUP
 case 2:
 YY_RULE_SETUP
 #line 17 "lexer.l"
-{ return IF; }
+{ return INT; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
 #line 18 "lexer.l"
-{ return ELSE; }
+{ return BOOL; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
 #line 19 "lexer.l"
-{ return WHILE; }
+{ return IF; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
 #line 20 "lexer.l"
-{ return INT; }
+{ return ELSE; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
 #line 21 "lexer.l"
-{ return BOOL; }
+{ return WHILE; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
@@ -794,37 +794,37 @@ YY_RULE_SETUP
 case 8:
 YY_RULE_SETUP
 #line 25 "lexer.l"
-{ return ASSIGN; }
+{ return PLUS; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
 #line 26 "lexer.l"
-{ return PLUS; }
+{ return MUL; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
 #line 27 "lexer.l"
-{ return TIMES; }
+{ return ASSIGN; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
 #line 29 "lexer.l"
-{ return LBRACE; }
+{ return RPAREN; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
 #line 30 "lexer.l"
-{ return RBRACE; }
+{ return LPAREN; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
 #line 31 "lexer.l"
-{ return LPAREN; }
+{ return RBRACE; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
 #line 32 "lexer.l"
-{ return RPAREN; }
+{ return LBRACE; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
