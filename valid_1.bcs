@@ -1,0 +1,17 @@
+BcsMain
+{
+  int i; int n; int even;
+  i = 0; n = 10; even = 0;
+  while (i < n)
+  {
+    if (i == 5)
+    {
+      even = even + 1
+    }
+    else
+    {
+      even = even + 2
+    };
+    i = i + 1
+  }
+}

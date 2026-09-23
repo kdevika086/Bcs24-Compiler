@@ -1,0 +1,11 @@
+BcsMain
+{
+  int a; int b; bool f;
+  a = 1; b = 2 + a * 3; f = 0;
+  if (a < b)  { a = 1 } else { b = 1 };
+  if (a > b)  { a = 1 } else { b = 1 };
+  if (a <= b) { a = 1 } else { b = 1 };
+  if (a >= b) { a = 1 } else { b = 1 };
+  if (a == b) { a = 1 } else { b = 1 };
+  if (a != b) { a = 1 } else { b = 1 }
+}
