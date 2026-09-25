@@ -1,1 +1,5 @@
-BcsMain { int x; x = 1; }
+BcsMain 
+{ 
+    int x; 
+    x = 8; 
+}
