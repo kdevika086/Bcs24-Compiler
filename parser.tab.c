@@ -71,13 +71,108 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int yylex(void);
 void yyerror(const char *s);
 
 extern FILE *yyin;
+extern int line_num;
 
-#line 81 "parser.tab.c"
+FILE *tacFile;
+int tempCount = 1;
+
+int semanticError = 0;
+int syntaxError = 0;
+
+enum { TYPE_INT, TYPE_BOOL, TYPE_INVALID };
+
+typedef struct Symbol
+{
+    char *name;
+    int type;
+} Symbol;
+
+typedef struct ExprInfo
+{
+    char *place;
+    int type;
+} ExprInfo;
+
+#define MAX_SYMBOLS 500
+
+Symbol symbolTable[MAX_SYMBOLS];
+int symbolCount = 0;
+
+int lookupSymbol(const char *name)
+{
+    int i;
+    for (i = 0; i < symbolCount; i++)
+    {
+        if (strcmp(symbolTable[i].name, name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+void declareSymbol(char *name, int type)
+{
+    if (lookupSymbol(name) != -1)
+    {
+        fprintf(stderr,"Semantic Error: '%s' is already declared\n", name);
+        semanticError = 1;
+        return;
+    }
+    if (symbolCount >= MAX_SYMBOLS)
+    {
+        fprintf(stderr, "Semantic Error: Symbol table is full\n");
+        semanticError = 1;
+        return;
+    }
+    symbolTable[symbolCount].name = strdup(name);
+    symbolTable[symbolCount].type = type;
+    symbolCount++;
+}
+
+int getSymbolType(const char *name)
+{
+    int index = lookupSymbol(name);
+    if (index == -1)
+    {
+        fprintf(stderr,"Semantic Error: '%s' is not declared\n", name);
+        semanticError = 1;
+        return TYPE_INVALID;
+    }
+    return symbolTable[index].type;
+}
+
+ExprInfo *makeExpr(const char *place, int type)
+{
+    ExprInfo *expr = malloc(sizeof(ExprInfo));
+    if (expr == NULL)
+    {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    expr->place = strdup(place);
+    if (expr->place == NULL)
+    {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    expr->type = type;
+    return expr;
+}
+
+char *newTemp(void)
+{
+    char buffer[20];
+    snprintf(buffer, sizeof(buffer), "t%d", tempCount++);
+    return strdup(buffer);
+}
+
+
+#line 176 "parser.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -133,10 +228,9 @@ enum yysymbol_kind_t
   YYSYMBOL_type = 25,                      /* type  */
   YYSYMBOL_stmtlist = 26,                  /* stmtlist  */
   YYSYMBOL_stmt = 27,                      /* stmt  */
-  YYSYMBOL_expr = 28,                      /* expr  */
-  YYSYMBOL_aexpr = 29,                     /* aexpr  */
-  YYSYMBOL_term = 30,                      /* term  */
-  YYSYMBOL_factor = 31                     /* factor  */
+  YYSYMBOL_aexpr = 28,                     /* aexpr  */
+  YYSYMBOL_term = 29,                      /* term  */
+  YYSYMBOL_factor = 30                     /* factor  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -464,16 +558,16 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  4
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   50
+#define YYLAST   26
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  21
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  11
+#define YYNNTS  10
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  20
+#define YYNRULES  18
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  50
+#define YYNSTATES  32
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   275
@@ -522,11 +616,10 @@ static const yytype_int8 yytranslate[] =
 
 #if YYDEBUG
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
-static const yytype_int8 yyrline[] =
+static const yytype_int16 yyrline[] =
 {
-       0,    24,    24,    28,    29,    33,    37,    38,    42,    43,
-      47,    48,    49,    53,    54,    58,    59,    63,    64,    68,
-      69
+       0,   134,   134,   138,   139,   143,   150,   154,   161,   162,
+     163,   167,   194,   216,   223,   245,   252,   257,   261
 };
 #endif
 
@@ -546,7 +639,7 @@ static const char *const yytname[] =
   "ELSE", "WHILE", "INT", "BOOL", "ID", "NUM", "RELOP", "ASSIGN", "PLUS",
   "MUL", "LBRACE", "RBRACE", "LPAREN", "RPAREN", "SEMI", "UNKNOWN",
   "$accept", "program", "declist", "decl", "type", "stmtlist", "stmt",
-  "expr", "aexpr", "term", "factor", YY_NULLPTR
+  "aexpr", "term", "factor", YY_NULLPTR
 };
 
 static const char *
@@ -556,7 +649,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-37)
+#define YYPACT_NINF (-11)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -570,11 +663,10 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-      21,    13,    29,    -5,   -37,   -37,   -37,     0,   -37,    22,
-      15,    16,    18,   -37,    -3,   -37,    19,    17,    17,    17,
-     -37,     6,   -37,   -37,   -37,    23,    12,    20,   -37,    24,
-      26,   -37,    25,    17,    17,    17,    28,     6,    26,    20,
-     -37,     6,     1,     2,    30,   -37,    31,     6,     3,   -37
+      10,    -1,    15,     4,   -11,   -11,   -11,    -3,   -11,     7,
+       5,   -11,    -9,   -11,     0,    -8,   -11,   -11,   -11,   -11,
+     -11,   -11,    -8,     8,     6,   -11,   -10,    -8,    -8,   -11,
+       6,   -11
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -583,24 +675,21 @@ static const yytype_int8 yypact[] =
 static const yytype_int8 yydefact[] =
 {
        0,     0,     0,     0,     1,     6,     7,     0,     4,     0,
-       0,     0,     0,     3,     0,     9,     0,     0,     0,     0,
-       2,     0,     5,    19,    20,     0,    14,    16,    18,     0,
-      10,     8,     0,     0,     0,     0,     0,     0,    13,    15,
-      17,     0,     0,     0,     0,    12,     0,     0,     0,    11
+       0,     3,     0,    10,     0,     0,     2,     9,     8,     5,
+      16,    17,     0,    11,    13,    15,     0,     0,     0,    18,
+      12,    14
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -37,   -37,   -37,    37,   -37,   -36,    27,    32,   -19,    11,
-      14
+     -11,   -11,   -11,    11,   -11,   -11,    12,     1,    -5,    -2
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-       0,     2,     7,     8,     9,    14,    15,    25,    26,    27,
-      28
+       0,     2,     7,     8,     9,    12,    13,    23,    24,    25
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -608,22 +697,16 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-      30,    42,     5,     6,    10,    43,    11,     5,     6,    12,
-      10,    48,    11,    20,    38,    12,    21,    44,    45,    49,
-      21,    21,    21,    33,     1,    34,    23,    24,     3,     4,
-      19,    16,    17,    18,    35,    46,     0,     0,    22,    34,
-      37,    32,    36,    41,    13,    39,    47,     0,    31,    40,
-      29
+      10,    20,    21,    27,     5,     6,    10,    16,    29,    22,
+      17,     5,     6,     1,     3,     4,    14,    15,    11,    19,
+      28,    27,    30,    26,    18,     0,    31
 };
 
 static const yytype_int8 yycheck[] =
 {
-      19,    37,     7,     8,     4,    41,     6,     7,     8,     9,
-       4,    47,     6,    16,    33,     9,    19,    16,    16,    16,
-      19,    19,    19,    11,     3,    13,     9,    10,    15,     0,
-      12,     9,    17,    17,    14,     5,    -1,    -1,    19,    13,
-      15,    18,    18,    15,     7,    34,    15,    -1,    21,    35,
-      18
+       9,     9,    10,    13,     7,     8,     9,    16,    18,    17,
+      19,     7,     8,     3,    15,     0,     9,    12,     7,    19,
+      14,    13,    27,    22,    12,    -1,    28
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
@@ -631,26 +714,23 @@ static const yytype_int8 yycheck[] =
 static const yytype_int8 yystos[] =
 {
        0,     3,    22,    15,     0,     7,     8,    23,    24,    25,
-       4,     6,     9,    24,    26,    27,     9,    17,    17,    12,
-      16,    19,    19,     9,    10,    28,    29,    30,    31,    28,
-      29,    27,    18,    11,    13,    14,    18,    15,    29,    30,
-      31,    15,    26,    26,    16,    16,     5,    15,    26,    16
+       9,    24,    26,    27,     9,    12,    16,    19,    27,    19,
+       9,    10,    17,    28,    29,    30,    28,    13,    14,    18,
+      29,    30
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
        0,    21,    22,    23,    23,    24,    25,    25,    26,    26,
-      27,    27,    27,    28,    28,    29,    29,    30,    30,    31,
-      31
+      26,    27,    28,    28,    29,    29,    30,    30,    30
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
-       0,     2,     5,     2,     1,     3,     1,     1,     3,     1,
-       3,    11,     7,     3,     1,     3,     1,     3,     1,     1,
-       1
+       0,     2,     5,     2,     1,     3,     1,     1,     2,     2,
+       1,     3,     3,     1,     3,     1,     1,     1,     3
 };
 
 
@@ -1113,8 +1193,148 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
+  case 5: /* decl: type ID SEMI  */
+#line 144 "parser.y"
+    {
+        declareSymbol((yyvsp[-1].str), (yyvsp[-2].type));
+    }
+#line 1202 "parser.tab.c"
+    break;
 
-#line 1118 "parser.tab.c"
+  case 6: /* type: INT  */
+#line 151 "parser.y"
+    {
+        (yyval.type) = TYPE_INT;
+    }
+#line 1210 "parser.tab.c"
+    break;
+
+  case 7: /* type: BOOL  */
+#line 155 "parser.y"
+    {
+        (yyval.type) = TYPE_BOOL;
+    }
+#line 1218 "parser.tab.c"
+    break;
+
+  case 11: /* stmt: ID ASSIGN aexpr  */
+#line 168 "parser.y"
+    {
+        int lhsType = getSymbolType((yyvsp[-2].str));
+        if (lhsType != TYPE_INVALID &&
+            (yyvsp[0].expr)->type != TYPE_INVALID &&
+            lhsType != (yyvsp[0].expr)->type)
+        {
+            fprintf(stderr,
+                "Semantic Error: Type mismatch in assignment to '%s'\n",
+                (yyvsp[-2].str));
+            semanticError = 1;
+        }
+        if (!semanticError &&
+            lhsType != TYPE_INVALID &&
+            (yyvsp[0].expr)->type != TYPE_INVALID)
+        {
+            fprintf(tacFile, "%s = %s\n", (yyvsp[-2].str), (yyvsp[0].expr)->place);
+        }
+    }
+#line 1241 "parser.tab.c"
+    break;
+
+  case 12: /* aexpr: aexpr PLUS term  */
+#line 195 "parser.y"
+    {
+        if ((yyvsp[-2].expr)->type != TYPE_INT ||
+            (yyvsp[0].expr)->type != TYPE_INT)
+        {
+            fprintf(stderr,
+                "Semantic Error: '+' requires int operands\n");
+            semanticError = 1;
+            (yyval.expr) = makeExpr("", TYPE_INVALID);
+        }
+        else
+        {
+            char *temp = newTemp();
+            (yyval.expr) = makeExpr(temp, TYPE_INT);
+
+            if (!semanticError)
+            {
+                fprintf(tacFile, "%s = %s + %s\n",
+                    temp, (yyvsp[-2].expr)->place, (yyvsp[0].expr)->place);
+            }
+        }
+    }
+#line 1267 "parser.tab.c"
+    break;
+
+  case 13: /* aexpr: term  */
+#line 217 "parser.y"
+    {
+        (yyval.expr) = (yyvsp[0].expr);
+    }
+#line 1275 "parser.tab.c"
+    break;
+
+  case 14: /* term: term MUL factor  */
+#line 224 "parser.y"
+    {
+        if ((yyvsp[-2].expr)->type != TYPE_INT ||
+            (yyvsp[0].expr)->type != TYPE_INT)
+        {
+            fprintf(stderr,
+                "Semantic Error: '*' requires int operands\n");
+            semanticError = 1;
+            (yyval.expr) = makeExpr("", TYPE_INVALID);
+        }
+        else
+        {
+            char *temp = newTemp();
+            (yyval.expr) = makeExpr(temp, TYPE_INT);
+
+            if (!semanticError)
+            {
+                fprintf(tacFile, "%s = %s * %s\n",
+                    temp, (yyvsp[-2].expr)->place, (yyvsp[0].expr)->place);
+            }
+        }
+    }
+#line 1301 "parser.tab.c"
+    break;
+
+  case 15: /* term: factor  */
+#line 246 "parser.y"
+    {
+        (yyval.expr) = (yyvsp[0].expr);
+    }
+#line 1309 "parser.tab.c"
+    break;
+
+  case 16: /* factor: ID  */
+#line 253 "parser.y"
+    {
+        int varType = getSymbolType((yyvsp[0].str));
+        (yyval.expr) = makeExpr((yyvsp[0].str), varType);
+    }
+#line 1318 "parser.tab.c"
+    break;
+
+  case 17: /* factor: NUM  */
+#line 258 "parser.y"
+    {
+        (yyval.expr) = makeExpr((yyvsp[0].str), TYPE_INT);
+    }
+#line 1326 "parser.tab.c"
+    break;
+
+  case 18: /* factor: LPAREN aexpr RPAREN  */
+#line 262 "parser.y"
+    {
+        (yyval.expr) = (yyvsp[-1].expr);
+    }
+#line 1334 "parser.tab.c"
+    break;
+
+
+#line 1338 "parser.tab.c"
 
       default: break;
     }
@@ -1307,12 +1527,14 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 72 "parser.y"
+#line 266 "parser.y"
 
 
 void yyerror(const char *s)
 {
+    (void)s;
     fprintf(stderr, "Syntax Error\n");
+    syntaxError = 1;
 }
 
 int main(int argc, char *argv[])
@@ -1324,18 +1546,32 @@ int main(int argc, char *argv[])
     }
 
     yyin = fopen(argv[1], "r");
-
     if (yyin == NULL)
     {
         perror("Error opening input file");
         return 1;
     }
 
-    if (yyparse() == 0)
+    tacFile = fopen("tac.txt", "w");
+    if (tacFile == NULL)
     {
-        printf("Parsing Successful\n");
+        perror("Error opening TAC output file");
+        fclose(yyin);
+        return 1;
     }
 
+    int parseResult = yyparse();
+
+    fclose(tacFile);
     fclose(yyin);
-    return 0;
+
+    if (parseResult == 0 && !semanticError && !syntaxError)
+    {
+        printf("Parsing Successful\n");
+        return 0;
+    }
+
+    remove("tac.txt");
+    printf("Compilation failed\n");
+    return 1;
 }

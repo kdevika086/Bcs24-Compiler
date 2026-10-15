@@ -1,5 +1,7 @@
 %{
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "parser.tab.h"
 
 int line_num = 1;
@@ -32,8 +34,15 @@ WS          [ \t\r]+
 "{"                             { return LBRACE; }
 ";"                             { return SEMI; }
 
-{NUM}                           { return NUM; }
-{ID}                            { return ID; }
+{NUM}                           {
+                                    yylval.str = strdup(yytext);
+                                    return NUM;
+                                }
+
+{ID}                            {
+                                    yylval.str = strdup(yytext);
+                                    return ID;
+                                }
 
 \n                              { line_num++; }
 {WS}                            { }
