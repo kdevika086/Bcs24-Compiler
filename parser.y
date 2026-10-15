@@ -12,6 +12,88 @@ extern int line_num;
 FILE *tacFile;
 int tempCount = 1;
 
+int semanticError = 0;
+int syntaxError = 0;
+
+enum { TYPE_INT, TYPE_BOOL, TYPE_INVALID };
+
+typedef struct Symbol
+{
+    char *name;
+    int type;
+} Symbol;
+
+typedef struct ExprInfo
+{
+    char *place;
+    int type;
+} ExprInfo;
+
+#define MAX_SYMBOLS 500
+
+Symbol symbolTable[MAX_SYMBOLS];
+int symbolCount = 0;
+
+int lookupSymbol(const char *name)
+{
+    int i;
+    for (i = 0; i < symbolCount; i++)
+    {
+        if (strcmp(symbolTable[i].name, name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+void declareSymbol(char *name, int type)
+{
+    if (lookupSymbol(name) != -1)
+    {
+        fprintf(stderr,"Semantic Error: '%s' is already declared\n", name);
+        semanticError = 1;
+        return;
+    }
+    if (symbolCount >= MAX_SYMBOLS)
+    {
+        fprintf(stderr, "Semantic Error: Symbol table is full\n");
+        semanticError = 1;
+        return;
+    }
+    symbolTable[symbolCount].name = strdup(name);
+    symbolTable[symbolCount].type = type;
+    symbolCount++;
+}
+
+int getSymbolType(const char *name)
+{
+    int index = lookupSymbol(name);
+    if (index == -1)
+    {
+        fprintf(stderr,"Semantic Error: '%s' is not declared\n", name);
+        semanticError = 1;
+        return TYPE_INVALID;
+    }
+    return symbolTable[index].type;
+}
+
+ExprInfo *makeExpr(const char *place, int type)
+{
+    ExprInfo *expr = malloc(sizeof(ExprInfo));
+    if (expr == NULL)
+    {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    expr->place = strdup(place);
+    if (expr->place == NULL)
+    {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    expr->type = type;
+    return expr;
+}
+
 char *newTemp(void)
 {
     char buffer[20];
@@ -21,9 +103,16 @@ char *newTemp(void)
 
 %}
 
+%code requires 
+{
+    typedef struct ExprInfo ExprInfo;
+}
+
 %union 
 {
     char *str;
+    int type;
+    ExprInfo *expr;
 }
 
 /* Tokens returned by lexer.l */
@@ -36,7 +125,8 @@ char *newTemp(void)
 %token LBRACE RBRACE LPAREN RPAREN SEMI
 %token UNKNOWN
 
-%type <str> aexpr term factor
+%type <type> type
+%type <expr> aexpr term factor
 
 %%
 
@@ -51,25 +141,48 @@ declist
 
 decl
     : type ID SEMI
+    {
+        declareSymbol($2, $1);
+    }
     ;
 
 type
     : INT
+    {
+        $$ = TYPE_INT;
+    }
     | BOOL
+    {
+        $$ = TYPE_BOOL;
+    }
     ;
 
 stmtlist
-    : stmtlist SEMI stmt
+    : stmtlist stmt
+    | stmtlist SEMI
     | stmt
     ;
 
 stmt
     : ID ASSIGN aexpr
     {
-        fprintf(tacFile, "%s = %s\n", $1, $3);
+        int lhsType = getSymbolType($1);
+        if (lhsType != TYPE_INVALID &&
+            $3->type != TYPE_INVALID &&
+            lhsType != $3->type)
+        {
+            fprintf(stderr,
+                "Semantic Error: Type mismatch in assignment to '%s'\n",
+                $1);
+            semanticError = 1;
+        }
+        if (!semanticError &&
+            lhsType != TYPE_INVALID &&
+            $3->type != TYPE_INVALID)
+        {
+            fprintf(tacFile, "%s = %s\n", $1, $3->place);
+        }
     }
-    | IF LPAREN expr RPAREN LBRACE stmtlist RBRACE ELSE LBRACE stmtlist RBRACE
-    | WHILE LPAREN expr RPAREN LBRACE stmtlist RBRACE
     ;
 
 expr
@@ -80,10 +193,27 @@ expr
 aexpr
     : aexpr PLUS term
     {
-        $$ = newTemp();
-        fprintf(tacFile, "%s = %s + %s\n", $$, $1, $3);
+        if ($1->type != TYPE_INT ||
+            $3->type != TYPE_INT)
+        {
+            fprintf(stderr,
+                "Semantic Error: '+' requires int operands\n");
+            semanticError = 1;
+            $$ = makeExpr("", TYPE_INVALID);
+        }
+        else
+        {
+            char *temp = newTemp();
+            $$ = makeExpr(temp, TYPE_INT);
+
+            if (!semanticError)
+            {
+                fprintf(tacFile, "%s = %s + %s\n",
+                    temp, $1->place, $3->place);
+            }
+        }
     }
-    | term
+| term
     {
         $$ = $1;
     }
@@ -92,8 +222,25 @@ aexpr
 term
     : term MUL factor
     {
-        $$ = newTemp();
-        fprintf(tacFile, "%s = %s * %s\n", $$, $1, $3);
+        if ($1->type != TYPE_INT ||
+            $3->type != TYPE_INT)
+        {
+            fprintf(stderr,
+                "Semantic Error: '*' requires int operands\n");
+            semanticError = 1;
+            $$ = makeExpr("", TYPE_INVALID);
+        }
+        else
+        {
+            char *temp = newTemp();
+            $$ = makeExpr(temp, TYPE_INT);
+
+            if (!semanticError)
+            {
+                fprintf(tacFile, "%s = %s * %s\n",
+                    temp, $1->place, $3->place);
+            }
+        }
     }
     | factor
     {
@@ -104,11 +251,12 @@ term
 factor
     : ID
     {
-        $$ = $1;
+        int varType = getSymbolType($1);
+        $$ = makeExpr($1, varType);
     }
     | NUM
     {
-        $$ = $1;
+        $$ = makeExpr($1, TYPE_INT);
     }
     | LPAREN aexpr RPAREN
     {
@@ -119,7 +267,9 @@ factor
 
 void yyerror(const char *s)
 {
+    (void)s;
     fprintf(stderr, "Syntax Error\n");
+    syntaxError = 1;
 }
 
 int main(int argc, char *argv[])
@@ -145,12 +295,18 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (yyparse() == 0)
-    {
-        printf("Parsing Successful\n");
-    }
+    int parseResult = yyparse();
 
     fclose(tacFile);
     fclose(yyin);
-    return 0;
+
+    if (parseResult == 0 && !semanticError && !syntaxError)
+    {
+        printf("Parsing Successful\n");
+        return 0;
+    }
+
+    remove("tac.txt");
+    printf("Compilation failed\n");
+    return 1;
 }

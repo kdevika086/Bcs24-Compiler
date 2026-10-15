@@ -9,6 +9,8 @@ parser.tab.c parser.tab.h: parser.y
 
 lex.yy.c: lexer.l parser.tab.h
 	flex lexer.l
+	
+.PHONY: clean
 
 clean:
-	rm -f $(TARGET) parser.tab.c parser.tab.h lex.yy.c
+	rm -f $(TARGET) parser.tab.c parser.tab.h lex.yy.c tac.txt
